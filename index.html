@@ -746,7 +746,12 @@
             membersArray.forEach(member => {
                 const selfTotal = calculateTotal(member.scores.self);
                 const leaderTotal = calculateTotal(member.scores.leader);
+                
                 let finalScore = avgLeaderScore > 0 ? (subject.groupScore * (leaderTotal / avgLeaderScore)) : 0;
+                
+                // Làm tròn đến hàng phần chục
+                finalScore = Math.round(finalScore * 10) / 10;
+                
                 if (finalScore > 10) finalScore = 10;
 
                 tbody.innerHTML += `
@@ -755,7 +760,7 @@
                         <td class="py-3 px-4 text-center text-ghia-muted text-xs hidden md:table-cell truncate" title="${member.role}">${member.role}</td>
                         <td class="py-3 px-4 text-center text-ghia-muted font-serif">${selfTotal.toFixed(2)}</td>
                         <td class="py-3 px-4 text-center text-ghia-rust font-bold font-serif">${leaderTotal.toFixed(2)}</td>
-                        <td class="py-3 px-4 text-center"><span class="inline-block bg-ghia-ink text-white px-3 py-1 rounded-full font-serif font-bold text-lg shadow-sm">${finalScore.toFixed(2)}</span></td>
+                        <td class="py-3 px-4 text-center"><span class="inline-block bg-ghia-ink text-white px-3 py-1 rounded-full font-serif font-bold text-lg shadow-sm">${finalScore.toFixed(1)}</span></td>
                     </tr>`;
             });
         }
