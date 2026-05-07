@@ -13,13 +13,13 @@
                 extend: {
                     colors: {
                         ghia: {
-                            bg: '#8B1E16',      // Đỏ đô thẫm
-                            card: '#FFF7F5',    // Trắng kem phớt hồng
-                            rust: '#D32F2F',    // Đỏ tươi/đậm
-                            ink: '#4A100C',     // Nâu đỏ đậm
-                            muted: '#A5736F',   // Đỏ xám nhạt
-                            tan: '#F0D4D1',     // Viền nhạt ánh đỏ
-                            cream: '#F9ECE4'    // Nền bảng
+                            bg: '#8B1E16',      
+                            card: '#FFF7F5',    
+                            rust: '#D32F2F',    
+                            ink: '#4A100C',     
+                            muted: '#A5736F',   
+                            tan: '#F0D4D1',     
+                            cream: '#F9ECE4'    
                         }
                     },
                     fontFamily: {
@@ -36,7 +36,6 @@
             background-color: #8B1E16;
             color: #4A100C;
         }
-
         .ghia-input {
             background-color: transparent;
             border: 1px solid #F0D4D1;
@@ -50,21 +49,17 @@
             border-color: #D32F2F;
             box-shadow: 0 0 0 2px rgba(211, 47, 47, 0.15);
         }
-
         .ghia-table th, .ghia-table td {
             border-bottom: 1px solid #F0D4D1;
         }
-        
         .ghia-table tr:last-child td {
             border-bottom: none;
         }
-
         .hide-scrollbar::-webkit-scrollbar { display: none; }
         .hide-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
         
         input[type=number]::-webkit-inner-spin-button, 
         input[type=number]::-webkit-outer-spin-button { -webkit-appearance: none; margin: 0; }
-
         #loadingOverlay {
             transition: opacity 0.5s ease;
         }
@@ -77,12 +72,13 @@
         <div id="loadingOverlay" class="absolute inset-0 bg-ghia-card z-50 flex flex-col items-center justify-center">
             <i class="fas fa-circle-notch fa-spin text-4xl text-ghia-rust mb-4"></i>
             <p class="font-serif italic text-ghia-ink text-lg" id="loadingText">Đang tải dữ liệu trực tuyến...</p>
+            <button id="skipCloudBtn" onclick="forceHideLoading()" class="mt-6 text-xs font-bold uppercase tracking-widest text-ghia-muted hover:text-ghia-rust transition-colors hidden underline underline-offset-4">Tiếp tục (Lưu nội bộ)</button>
         </div>
 
         <div class="pt-8 pb-4 px-6 text-center relative">
             <div class="uppercase tracking-[0.2em] text-xs font-bold text-ghia-rust mb-3 flex items-center justify-center gap-2">
-                <i class="fas fa-cloud text-ghia-forest" title="Đã kết nối máy chủ"></i> 
-                Hệ Thống Trực Tuyến
+                <i id="cloudStatusIcon" class="fas fa-spinner fa-spin text-ghia-muted"></i> 
+                <span id="cloudStatusText">Đang kiểm tra kết nối...</span>
             </div>
             <h1 class="text-3xl md:text-5xl font-serif font-semibold text-ghia-ink mb-2 italic">Đánh Giá Thành Viên</h1>
             
@@ -117,7 +113,6 @@
                 </button>
             </div>
 
-            <!-- Tabs Phân Quyền (Rút gọn còn 3 tabs) -->
             <div class="bg-ghia-bg/5 py-3 px-6 flex items-center justify-start md:justify-center overflow-x-auto hide-scrollbar gap-2 md:gap-4 border-b border-ghia-tan/50">
                 <button onclick="switchSubTab('self')" id="tab-self" class="whitespace-nowrap px-6 py-2 rounded-full text-sm font-semibold transition-all">1. Tự Đánh Giá</button>
                 <button onclick="switchSubTab('leader')" id="tab-leader" class="whitespace-nowrap px-6 py-2 rounded-full text-sm font-semibold transition-all">2. Nhóm Trưởng</button>
@@ -136,9 +131,7 @@
                             <i class="fas fa-user-plus mr-2"></i>Thêm thành viên
                         </button>
                     </div>
-                    
                     <div class="grid grid-cols-1 md:grid-cols-2 gap-4" id="members-container"></div>
-
                     <div id="noMemberState" class="text-center py-12 hidden">
                         <i class="fas fa-users text-4xl text-ghia-muted/30 mb-4"></i>
                         <p class="text-ghia-muted font-serif italic text-lg">Chưa có thành viên nào.</p>
@@ -176,7 +169,6 @@
         </div>
     </div>
 
-    <!-- MODAL 1: THÊM/SỬA THÀNH VIÊN -->
     <div id="memberModal" class="fixed inset-0 bg-ghia-ink/80 backdrop-blur-sm flex items-center justify-center z-50 hidden opacity-0 transition-opacity duration-300 p-4">
         <div class="bg-ghia-card w-full max-w-lg rounded-[2rem] shadow-2xl overflow-hidden transform scale-95 transition-transform duration-300 flex flex-col max-h-[90vh]" id="memberModalContent">
             <div class="bg-ghia-ink text-white px-6 py-5 flex justify-between items-center flex-shrink-0">
@@ -204,7 +196,6 @@
         </div>
     </div>
 
-    <!-- MODAL 2: ĐÁNH GIÁ ĐIỂM (CÓ BẢNG TIÊU CHÍ BÊN TRONG) -->
     <div id="scoreModal" class="fixed inset-0 bg-ghia-ink/80 backdrop-blur-sm flex items-center justify-center z-50 hidden opacity-0 transition-opacity duration-300 p-4">
         <div class="bg-ghia-card w-full max-w-6xl rounded-[2rem] shadow-2xl overflow-hidden transform scale-95 transition-transform duration-300 flex flex-col max-h-[90vh]" id="scoreModalContent">
             
@@ -216,10 +207,8 @@
                 <button onclick="closeScoreModal()" class="text-ghia-tan hover:text-white transition p-2"><i class="fas fa-times text-xl"></i></button>
             </div>
 
-            <!-- Bố cục 2 cột (Trái: Tiêu chí, Phải: Form chấm điểm) -->
             <div class="p-6 md:p-8 flex-1 overflow-y-auto flex flex-col md:flex-row gap-8">
                 
-                <!-- Cột Trái: Bảng Tiêu Chí Đối Chiếu -->
                 <div class="w-full md:w-7/12 space-y-4">
                     <h4 class="font-serif italic text-ghia-ink text-xl border-b border-ghia-tan pb-2 flex items-center"><i class="fas fa-info-circle mr-2 text-ghia-rust"></i> Bảng Tiêu Chí Đối Chiếu</h4>
                     <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
@@ -284,7 +273,6 @@
                     </div>
                 </div>
 
-                <!-- Cột Phải: Form nhập điểm -->
                 <div class="w-full md:w-5/12 bg-white p-5 rounded-2xl border border-ghia-tan shadow-sm flex flex-col h-max">
                     <h4 class="font-serif italic text-ghia-ink text-xl border-b border-ghia-tan pb-2 mb-4">Chấm Điểm</h4>
                     <form id="evaluationForm" class="space-y-4">
@@ -336,7 +324,7 @@
         import { getAuth, signInAnonymously, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
         import { getFirestore, collection, doc, setDoc, deleteDoc, onSnapshot } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
 
-        // --- CẤU HÌNH FIREBASE CỦA BẠN ---
+        // MÃ FIREBASE CỦA BẠN
         const firebaseConfig = {
             apiKey: "AIzaSyDKYXb044UwyED38oFBJG76oDZ2w1UDF9I",
             authDomain: "danh-gia-nhom.firebaseapp.com",
@@ -345,7 +333,7 @@
             messagingSenderId: "385694677266",
             appId: "1:385694677266:web:a6dda27f189025fc149bcb"
         };
-        const uniqueAppId = "nhom-cua-toi"; 
+        const uniqueAppId = "nhom-tmdtcb-2026"; 
 
         const app = initializeApp(firebaseConfig);
         const auth = getAuth(app);
@@ -370,11 +358,19 @@
             renderApp();
         };
 
+        setTimeout(() => {
+            const btn = document.getElementById('skipCloudBtn');
+            if (btn) btn.classList.remove('hidden');
+        }, 3000);
+
         const initAuth = async () => {
             try {
                 await signInAnonymously(auth);
             } catch (error) {
                 console.error("Lỗi xác thực:", error);
+                document.getElementById('cloudStatusIcon').className = "fas fa-cloud-slash text-ghia-rust";
+                document.getElementById('cloudStatusText').textContent = "Lưu Nội Bộ (Lỗi Đám Mây)";
+                alert("Lỗi kết nối: " + error.message + "\n\nHãy nhớ thêm domain github.io của bạn vào Firebase > Authentication > Settings > Authorized domains nhé!");
                 window.forceHideLoading();
             }
         };
@@ -403,9 +399,16 @@
                 } else {
                     activeSubjectId = null;
                 }
+
+                document.getElementById('cloudStatusIcon').className = "fas fa-cloud text-ghia-forest";
+                document.getElementById('cloudStatusText').textContent = "Trực Tuyến (Đã Đồng Bộ)";
+
                 window.forceHideLoading();
             }, (error) => {
                 console.error("Lỗi tải dữ liệu Cloud:", error);
+                document.getElementById('cloudStatusIcon').className = "fas fa-cloud-slash text-ghia-rust";
+                document.getElementById('cloudStatusText').textContent = "Lưu Nội Bộ (Lỗi Database)";
+                alert("Lỗi Firestore: Bạn nhớ vào Firebase Database tạo Database ở chế độ 'Start in test mode' nhé.");
                 window.forceHideLoading();
             });
         }
@@ -431,17 +434,20 @@
             localStorage.setItem('ghiaGroupEvalApp_local', JSON.stringify(appData));
 
             if (!subjectsRef) return;
-            if (actionType === 'delete' && subjectIdToDelete) {
-                await deleteDoc(doc(subjectsRef, subjectIdToDelete));
-            } else {
-                const subject = getActiveSubject();
-                if (subject) {
-                    await setDoc(doc(subjectsRef, subject.id), subject);
+            try {
+                if (actionType === 'delete' && subjectIdToDelete) {
+                    await deleteDoc(doc(subjectsRef, subjectIdToDelete));
+                } else {
+                    const subject = getActiveSubject();
+                    if (subject) {
+                        await setDoc(doc(subjectsRef, subject.id), subject);
+                    }
                 }
+            } catch (err) {
+                console.error("Lỗi khi lưu lên Cloud:", err);
             }
         }
 
-        // --- HÀM TƯƠNG TÁC GIAO DIỆN ---
         window.addSubject = async function() {
             const name = prompt("Nhập tên môn học mới:");
             if (name && name.trim()) {
@@ -656,7 +662,6 @@
             document.getElementById('currentSubjectTitle').textContent = subject.name;
             document.getElementById('groupScoreInput').value = subject.groupScore;
 
-            // Xóa tab criteria & guide, chỉ còn 3 tab chính
             ['self', 'leader', 'calc'].forEach(t => {
                 const btn = document.getElementById(`tab-${t}`);
                 if(!btn) return;
@@ -746,12 +751,8 @@
             membersArray.forEach(member => {
                 const selfTotal = calculateTotal(member.scores.self);
                 const leaderTotal = calculateTotal(member.scores.leader);
-                
                 let finalScore = avgLeaderScore > 0 ? (subject.groupScore * (leaderTotal / avgLeaderScore)) : 0;
-                
-                // Làm tròn đến hàng phần chục
                 finalScore = Math.round(finalScore * 10) / 10;
-                
                 if (finalScore > 10) finalScore = 10;
 
                 tbody.innerHTML += `
