@@ -1,0 +1,764 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Hệ Thống Đánh Giá Nhóm | TMĐTCB</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=DM+Sans:opsz,wght@9..40,400;9..40,500;9..40,700&family=Playfair+Display:ital,wght@0,400;0,600;0,700;1,400;1,600&display=swap" rel="stylesheet">
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        ghia: {
+                            bg: '#8B1E16',      // Đỏ đô thẫm
+                            card: '#FFF7F5',    // Trắng kem phớt hồng
+                            rust: '#D32F2F',    // Đỏ tươi/đậm
+                            ink: '#4A100C',     // Nâu đỏ đậm
+                            muted: '#A5736F',   // Đỏ xám nhạt
+                            tan: '#F0D4D1',     // Viền nhạt ánh đỏ
+                            cream: '#F9ECE4'    // Nền bảng
+                        }
+                    },
+                    fontFamily: {
+                        serif: ['"Playfair Display"', 'serif'],
+                        sans: ['"DM Sans"', 'sans-serif'],
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        body {
+            font-family: 'DM Sans', sans-serif;
+            background-color: #8B1E16;
+            color: #4A100C;
+        }
+
+        .ghia-input {
+            background-color: transparent;
+            border: 1px solid #F0D4D1;
+            border-radius: 1rem;
+            padding: 0.75rem 1rem;
+            color: #4A100C;
+            transition: all 0.3s ease;
+        }
+        .ghia-input:focus {
+            outline: none;
+            border-color: #D32F2F;
+            box-shadow: 0 0 0 2px rgba(211, 47, 47, 0.15);
+        }
+
+        .ghia-table th, .ghia-table td {
+            border-bottom: 1px solid #F0D4D1;
+        }
+        
+        .ghia-table tr:last-child td {
+            border-bottom: none;
+        }
+
+        .hide-scrollbar::-webkit-scrollbar { display: none; }
+        .hide-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+        
+        input[type=number]::-webkit-inner-spin-button, 
+        input[type=number]::-webkit-outer-spin-button { -webkit-appearance: none; margin: 0; }
+
+        #loadingOverlay {
+            transition: opacity 0.5s ease;
+        }
+    </style>
+</head>
+<body class="min-h-screen flex flex-col items-center py-6 px-4 md:py-10 md:px-8">
+
+    <div class="bg-ghia-card rounded-[2rem] shadow-2xl w-full max-w-5xl overflow-hidden border border-ghia-tan/50 flex flex-col min-h-[85vh] relative">
+        
+        <div id="loadingOverlay" class="absolute inset-0 bg-ghia-card z-50 flex flex-col items-center justify-center">
+            <i class="fas fa-circle-notch fa-spin text-4xl text-ghia-rust mb-4"></i>
+            <p class="font-serif italic text-ghia-ink text-lg" id="loadingText">Đang tải dữ liệu trực tuyến...</p>
+        </div>
+
+        <div class="pt-8 pb-4 px-6 text-center relative">
+            <div class="uppercase tracking-[0.2em] text-xs font-bold text-ghia-rust mb-3 flex items-center justify-center gap-2">
+                <i class="fas fa-cloud text-ghia-forest" title="Đã kết nối máy chủ"></i> 
+                Hệ Thống Trực Tuyến
+            </div>
+            <h1 class="text-3xl md:text-5xl font-serif font-semibold text-ghia-ink mb-2 italic">Đánh Giá Thành Viên</h1>
+            
+            <div class="flex justify-center items-center gap-6 mt-4">
+                <button onclick="exportData()" class="text-xs font-bold uppercase tracking-widest text-ghia-muted hover:text-ghia-rust transition-colors flex items-center gap-1">
+                    <i class="fas fa-file-export text-sm"></i> Tải File Backup
+                </button>
+            </div>
+        </div>
+
+        <div class="border-y border-ghia-tan/50 bg-ghia-bg/5 py-3 px-6 flex items-center overflow-x-auto hide-scrollbar gap-3" id="subjectTabs">
+        </div>
+
+        <div id="noSubjectState" class="flex-1 flex flex-col items-center justify-center py-20 px-6 text-center hidden">
+            <div class="w-20 h-20 bg-ghia-tan/30 rounded-full flex items-center justify-center mb-6">
+                <i class="fas fa-folder-plus text-3xl text-ghia-rust"></i>
+            </div>
+            <h2 class="text-2xl font-serif text-ghia-ink mb-3">Chưa có môn học nào</h2>
+            <p class="text-ghia-muted mb-8 max-w-md">Hãy tạo một môn học mới để bắt đầu đánh giá nhóm trực tuyến!</p>
+            <div class="flex flex-col sm:flex-row gap-4 justify-center">
+                <button onclick="addSubject()" class="bg-ghia-rust hover:bg-ghia-ink text-white px-8 py-3 rounded-full font-bold uppercase tracking-widest text-xs transition-colors shadow-lg">
+                    <i class="fas fa-plus mr-2"></i> Thêm Môn Học Mới
+                </button>
+            </div>
+        </div>
+
+        <div id="mainContent" class="hidden flex-col flex-1">
+            <div class="px-6 py-4 flex items-center justify-between border-b border-ghia-tan">
+                <h2 id="currentSubjectTitle" class="text-xl md:text-2xl font-serif text-ghia-ink font-semibold">Tên Môn</h2>
+                <button onclick="deleteSubject()" class="text-xs text-ghia-muted hover:text-ghia-rust transition-colors uppercase tracking-wider font-bold flex items-center">
+                    <i class="far fa-trash-alt mr-1"></i> Xóa môn
+                </button>
+            </div>
+
+            <!-- Tabs Phân Quyền (Rút gọn còn 3 tabs) -->
+            <div class="bg-ghia-bg/5 py-3 px-6 flex items-center justify-start md:justify-center overflow-x-auto hide-scrollbar gap-2 md:gap-4 border-b border-ghia-tan/50">
+                <button onclick="switchSubTab('self')" id="tab-self" class="whitespace-nowrap px-6 py-2 rounded-full text-sm font-semibold transition-all">1. Tự Đánh Giá</button>
+                <button onclick="switchSubTab('leader')" id="tab-leader" class="whitespace-nowrap px-6 py-2 rounded-full text-sm font-semibold transition-all">2. Nhóm Trưởng</button>
+                <button onclick="switchSubTab('calc')" id="tab-calc" class="whitespace-nowrap px-6 py-2 rounded-full text-sm font-semibold transition-all">3. Phân Bổ Điểm</button>
+            </div>
+
+            <div class="px-6 md:px-10 py-6 flex-1 overflow-y-auto">
+                
+                <div id="view-list" class="block">
+                    <div class="flex flex-col md:flex-row md:items-end justify-between mb-6 gap-4">
+                        <div>
+                            <h2 id="view-list-title" class="text-2xl font-serif text-ghia-ink italic">Điểm Tự Đánh Giá</h2>
+                            <p class="text-xs font-bold uppercase tracking-widest text-ghia-muted mt-1">Dữ liệu được lưu và đồng bộ lập tức cho cả nhóm</p>
+                        </div>
+                        <button onclick="openMemberModal()" class="bg-ghia-ink hover:bg-ghia-rust text-white px-6 py-2.5 rounded-full font-bold uppercase tracking-widest text-xs transition-colors shadow-md whitespace-nowrap">
+                            <i class="fas fa-user-plus mr-2"></i>Thêm thành viên
+                        </button>
+                    </div>
+                    
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4" id="members-container"></div>
+
+                    <div id="noMemberState" class="text-center py-12 hidden">
+                        <i class="fas fa-users text-4xl text-ghia-muted/30 mb-4"></i>
+                        <p class="text-ghia-muted font-serif italic text-lg">Chưa có thành viên nào.</p>
+                    </div>
+                </div>
+
+                <div id="view-calc" class="hidden">
+                    <div class="bg-white rounded-[2rem] p-6 border border-ghia-tan mb-8 shadow-sm flex flex-col md:flex-row items-center justify-between gap-6">
+                        <div>
+                            <h2 class="text-2xl font-serif text-ghia-ink italic mb-2">Điểm Chung Của Nhóm</h2>
+                            <p class="text-sm text-ghia-muted">Nhập điểm do giảng viên chấm cho toàn bài.</p>
+                        </div>
+                        <div class="relative">
+                            <input type="number" id="groupScoreInput" value="8.5" min="0" max="10" step="0.1" onchange="saveGroupScore()" class="w-32 text-3xl font-serif text-center bg-ghia-bg/5 border-b-2 border-ghia-rust text-ghia-rust focus:outline-none focus:border-ghia-ink py-2">
+                        </div>
+                    </div>
+                    <div class="overflow-x-auto rounded-2xl border border-ghia-tan">
+                        <table class="w-full text-left ghia-table bg-white">
+                            <thead class="bg-ghia-cream text-ghia-ink font-serif italic">
+                                <tr>
+                                    <th class="py-4 px-4 font-semibold">Thành Viên</th>
+                                    <th class="py-4 px-4 font-semibold text-center hidden md:table-cell">Nhiệm Vụ</th>
+                                    <th class="py-4 px-4 font-semibold text-center text-ghia-muted">Tự Đ.Giá</th>
+                                    <th class="py-4 px-4 font-semibold text-center text-ghia-rust">Nhóm Trưởng</th>
+                                    <th class="py-4 px-4 font-semibold text-center text-ghia-ink text-lg">Thực Tế</th>
+                                </tr>
+                            </thead>
+                            <tbody id="calc-table-body" class="text-sm"></tbody>
+                        </table>
+                    </div>
+                    <div id="formula-note" class="mt-4 text-xs text-ghia-muted italic text-center leading-relaxed"></div>
+                </div>
+
+            </div>
+        </div>
+    </div>
+
+    <!-- MODAL 1: THÊM/SỬA THÀNH VIÊN -->
+    <div id="memberModal" class="fixed inset-0 bg-ghia-ink/80 backdrop-blur-sm flex items-center justify-center z-50 hidden opacity-0 transition-opacity duration-300 p-4">
+        <div class="bg-ghia-card w-full max-w-lg rounded-[2rem] shadow-2xl overflow-hidden transform scale-95 transition-transform duration-300 flex flex-col max-h-[90vh]" id="memberModalContent">
+            <div class="bg-ghia-ink text-white px-6 py-5 flex justify-between items-center flex-shrink-0">
+                <h3 class="font-serif italic text-2xl" id="memberModalTitle">Thêm Thành Viên</h3>
+                <button onclick="closeMemberModal()" class="text-white/70 hover:text-white transition p-2"><i class="fas fa-times text-xl"></i></button>
+            </div>
+            <div class="p-6 md:p-8 space-y-5 overflow-y-auto flex-1">
+                <input type="hidden" id="editMemberId">
+                <div>
+                    <label class="block text-sm font-bold uppercase tracking-widest text-ghia-muted mb-2">Họ và tên</label>
+                    <input type="text" id="mName" class="ghia-input w-full">
+                </div>
+                <div>
+                    <label class="block text-sm font-bold uppercase tracking-widest text-ghia-muted mb-2">Mã Sinh Viên</label>
+                    <input type="text" id="mMsv" class="ghia-input w-full">
+                </div>
+                <div>
+                    <label class="block text-sm font-bold uppercase tracking-widest text-ghia-muted mb-2">Nhiệm vụ</label>
+                    <input type="text" id="mRole" class="ghia-input w-full">
+                </div>
+            </div>
+            <div class="bg-ghia-cream px-6 py-4 flex justify-end border-t border-ghia-tan flex-shrink-0">
+                <button onclick="saveMember()" class="bg-ghia-rust hover:bg-ghia-ink text-white px-8 py-3 rounded-full font-bold uppercase tracking-widest text-xs transition-colors shadow-lg">Lưu Thông Tin</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- MODAL 2: ĐÁNH GIÁ ĐIỂM (CÓ BẢNG TIÊU CHÍ BÊN TRONG) -->
+    <div id="scoreModal" class="fixed inset-0 bg-ghia-ink/80 backdrop-blur-sm flex items-center justify-center z-50 hidden opacity-0 transition-opacity duration-300 p-4">
+        <div class="bg-ghia-card w-full max-w-6xl rounded-[2rem] shadow-2xl overflow-hidden transform scale-95 transition-transform duration-300 flex flex-col max-h-[90vh]" id="scoreModalContent">
+            
+            <div class="bg-ghia-bg text-white px-6 py-5 flex justify-between items-center flex-shrink-0">
+                <div>
+                    <h3 class="font-serif italic text-2xl mb-1" id="modalMemberName">Tên Thành Viên</h3>
+                    <p class="text-xs font-sans uppercase tracking-widest text-ghia-tan/80" id="modalMemberRole">Vai trò</p>
+                </div>
+                <button onclick="closeScoreModal()" class="text-ghia-tan hover:text-white transition p-2"><i class="fas fa-times text-xl"></i></button>
+            </div>
+
+            <!-- Bố cục 2 cột (Trái: Tiêu chí, Phải: Form chấm điểm) -->
+            <div class="p-6 md:p-8 flex-1 overflow-y-auto flex flex-col md:flex-row gap-8">
+                
+                <!-- Cột Trái: Bảng Tiêu Chí Đối Chiếu -->
+                <div class="w-full md:w-7/12 space-y-4">
+                    <h4 class="font-serif italic text-ghia-ink text-xl border-b border-ghia-tan pb-2 flex items-center"><i class="fas fa-info-circle mr-2 text-ghia-rust"></i> Bảng Tiêu Chí Đối Chiếu</h4>
+                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                        <div class="bg-white p-3 rounded-xl border border-ghia-tan shadow-sm text-xs">
+                            <strong class="text-ghia-ink block mb-1">1. Chất lượng (Max: 3.0đ)</strong>
+                            <ul class="text-ghia-muted space-y-1">
+                                <li><span class="text-ghia-ink">3.0đ:</span> Xuất sắc, sâu sắc, không lỗi.</li>
+                                <li><span class="text-ghia-ink">2.0đ:</span> Khá, cần sửa đổi đôi chút.</li>
+                                <li><span class="text-ghia-ink">1.0đ:</span> Trung bình, nhiều sai sót.</li>
+                            </ul>
+                        </div>
+                        <div class="bg-white p-3 rounded-xl border border-ghia-tan shadow-sm text-xs">
+                            <strong class="text-ghia-ink block mb-1">2. Khối lượng CV (Max: 2.0đ)</strong>
+                            <ul class="text-ghia-muted space-y-1">
+                                <li><span class="text-ghia-ink">2.0đ:</span> Hoàn thành 100% việc.</li>
+                                <li><span class="text-ghia-ink">1.0đ:</span> Hoàn thành ~50% việc.</li>
+                                <li><span class="text-ghia-ink">0.0đ:</span> Không đóng góp, đùn đẩy.</li>
+                            </ul>
+                        </div>
+                        <div class="bg-white p-3 rounded-xl border border-ghia-tan shadow-sm text-xs">
+                            <strong class="text-ghia-ink block mb-1">3. Tích cực & Thái độ (Max: 1.5đ)</strong>
+                            <ul class="text-ghia-muted space-y-1">
+                                <li><span class="text-ghia-ink">1.5đ:</span> Rất chủ động, tiếp thu ý kiến.</li>
+                                <li><span class="text-ghia-ink">0.75đ:</span> Thụ động, đợi nhắc nhở.</li>
+                                <li><span class="text-ghia-ink">0.0đ:</span> Tiêu cực, bảo thủ, chống đối.</li>
+                            </ul>
+                        </div>
+                        <div class="bg-white p-3 rounded-xl border border-ghia-tan shadow-sm text-xs">
+                            <strong class="text-ghia-ink block mb-1">4. Giao tiếp & Hỗ trợ (Max: 1.0đ)</strong>
+                            <ul class="text-ghia-muted space-y-1">
+                                <li><span class="text-ghia-ink">1.0đ:</span> Phản hồi nhanh, sẵn sàng hỗ trợ.</li>
+                                <li><span class="text-ghia-ink">0.5đ:</span> Phản hồi chậm, ít tương tác.</li>
+                                <li><span class="text-ghia-ink">0.0đ:</span> Mất liên lạc, gây xích mích.</li>
+                            </ul>
+                        </div>
+                        <div class="bg-white p-3 rounded-xl border border-ghia-tan shadow-sm text-xs">
+                            <strong class="text-ghia-ink block mb-1">5. Tuân thủ Deadline (Max: 1.5đ)</strong>
+                            <ul class="text-ghia-muted space-y-1">
+                                <li><span class="text-ghia-ink">1.5đ:</span> Đúng/trước hạn.</li>
+                                <li><span class="text-ghia-ink">1.0đ:</span> Trễ 1 lần (có báo trước).</li>
+                                <li><span class="text-ghia-ink">0.5đ:</span> Thường xuyên trễ deadline.</li>
+                            </ul>
+                        </div>
+                        <div class="bg-white p-3 rounded-xl border border-ghia-tan shadow-sm text-xs">
+                            <strong class="text-ghia-ink block mb-1">6. Tham gia họp nhóm (Max: 1.0đ)</strong>
+                            <ul class="text-ghia-muted space-y-1">
+                                <li><span class="text-ghia-ink">1.0đ:</span> Đầy đủ 100%, đúng giờ.</li>
+                                <li><span class="text-ghia-ink">0.75đ:</span> Vắng 1 buổi phép/trễ 1-2 lần.</li>
+                                <li><span class="text-ghia-ink">0.5đ:</span> Vắng 2 buổi phép/1 buổi ko phép.</li>
+                            </ul>
+                        </div>
+                        <div class="bg-ghia-cream border border-ghia-rust/30 p-3 rounded-xl shadow-sm text-xs sm:col-span-2 flex flex-col sm:flex-row gap-4">
+                            <div class="flex-1">
+                                <strong class="text-green-700 block mb-1"><i class="fas fa-arrow-up mr-1"></i> Thưởng (Đến +1.0đ)</strong>
+                                <ul class="text-ghia-muted space-y-1"><li>Đóng góp xuất sắc; Hỗ trợ đồng đội gánh team; Leader tốt.</li></ul>
+                            </div>
+                            <div class="flex-1">
+                                <strong class="text-ghia-rust block mb-1"><i class="fas fa-arrow-down mr-1"></i> Phạt (Đến -2.0đ)</strong>
+                                <ul class="text-ghia-muted space-y-1"><li>Thái độ cực tệ; Đạo văn; Vi phạm liên tục quy định nhóm.</li></ul>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Cột Phải: Form nhập điểm -->
+                <div class="w-full md:w-5/12 bg-white p-5 rounded-2xl border border-ghia-tan shadow-sm flex flex-col h-max">
+                    <h4 class="font-serif italic text-ghia-ink text-xl border-b border-ghia-tan pb-2 mb-4">Chấm Điểm</h4>
+                    <form id="evaluationForm" class="space-y-4">
+                        <div class="flex items-center justify-between border-b border-ghia-tan pb-2">
+                            <label class="font-semibold text-sm w-2/3">1. Chất lượng (Max: 3.0)</label>
+                            <input type="number" id="c1" min="0" max="3" step="0.25" class="ghia-input w-20 text-center score-input !py-1.5 !px-2">
+                        </div>
+                        <div class="flex items-center justify-between border-b border-ghia-tan pb-2">
+                            <label class="font-semibold text-sm w-2/3">2. Khối lượng (Max: 2.0)</label>
+                            <input type="number" id="c2" min="0" max="2" step="0.25" class="ghia-input w-20 text-center score-input !py-1.5 !px-2">
+                        </div>
+                        <div class="flex items-center justify-between border-b border-ghia-tan pb-2">
+                            <label class="font-semibold text-sm w-2/3">3. Tích cực (Max: 1.5)</label>
+                            <input type="number" id="c3" min="0" max="1.5" step="0.25" class="ghia-input w-20 text-center score-input !py-1.5 !px-2">
+                        </div>
+                        <div class="flex items-center justify-between border-b border-ghia-tan pb-2">
+                            <label class="font-semibold text-sm w-2/3">4. Giao tiếp (Max: 1.0)</label>
+                            <input type="number" id="c4" min="0" max="1" step="0.25" class="ghia-input w-20 text-center score-input !py-1.5 !px-2">
+                        </div>
+                        <div class="flex items-center justify-between border-b border-ghia-tan pb-2">
+                            <label class="font-semibold text-sm w-2/3">5. Deadline (Max: 1.5)</label>
+                            <input type="number" id="c5" min="0" max="1.5" step="0.25" class="ghia-input w-20 text-center score-input !py-1.5 !px-2">
+                        </div>
+                        <div class="flex items-center justify-between border-b border-ghia-tan pb-2">
+                            <label class="font-semibold text-sm w-2/3">6. Họp nhóm (Max: 1.0)</label>
+                            <input type="number" id="c6" min="0" max="1" step="0.25" class="ghia-input w-20 text-center score-input !py-1.5 !px-2">
+                        </div>
+                        <div class="flex items-center justify-between pt-1">
+                            <label class="font-semibold text-sm text-ghia-rust w-2/3">Thưởng/Phạt</label>
+                            <input type="number" id="cBonus" min="-2" max="1" step="0.25" class="ghia-input w-20 text-center score-input border-ghia-rust/50 text-ghia-rust font-bold !py-1.5 !px-2">
+                        </div>
+                    </form>
+                </div>
+                
+            </div>
+
+            <div class="bg-ghia-cream px-6 py-4 flex items-center justify-between border-t border-ghia-tan flex-shrink-0">
+                <div>
+                    <span class="text-xs uppercase tracking-widest font-bold text-ghia-muted">Tổng:</span>
+                    <span id="modalTotalScore" class="text-2xl font-serif font-bold text-ghia-ink ml-2">0.00</span>
+                </div>
+                <button onclick="saveScore()" class="bg-ghia-rust hover:bg-ghia-ink text-white px-8 py-3 rounded-full font-bold uppercase tracking-widest text-xs transition-colors shadow-lg">Lưu Điểm</button>
+            </div>
+        </div>
+    </div>
+
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
+        import { getAuth, signInAnonymously, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+        import { getFirestore, collection, doc, setDoc, deleteDoc, onSnapshot } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+
+        // --- CẤU HÌNH FIREBASE CỦA BẠN ---
+        const firebaseConfig = {
+            apiKey: "AIzaSyDKYXb044UwyED38oFBJG76oDZ2w1UDF9I",
+            authDomain: "danh-gia-nhom.firebaseapp.com",
+            projectId: "danh-gia-nhom",
+            storageBucket: "danh-gia-nhom.firebasestorage.app",
+            messagingSenderId: "385694677266",
+            appId: "1:385694677266:web:a6dda27f189025fc149bcb"
+        };
+        const uniqueAppId = "nhom-cua-toi"; 
+
+        const app = initializeApp(firebaseConfig);
+        const auth = getAuth(app);
+        const db = getFirestore(app);
+
+        let subjectsRef = null;
+        let unsubscribeSnapshot = null;
+
+        let appData = [];
+        let activeSubjectId = null;
+        let currentSubTab = 'self'; 
+        let activeMemberIdForScore = null;
+
+        const defaultScore = { c1: 3, c2: 2, c3: 1.5, c4: 1, c5: 1.5, c6: 1, bonus: 0 };
+
+        window.forceHideLoading = function() {
+            const loading = document.getElementById('loadingOverlay');
+            if (loading) {
+                loading.style.opacity = '0';
+                setTimeout(() => loading.classList.add('hidden'), 500);
+            }
+            renderApp();
+        };
+
+        const initAuth = async () => {
+            try {
+                await signInAnonymously(auth);
+            } catch (error) {
+                console.error("Lỗi xác thực:", error);
+                window.forceHideLoading();
+            }
+        };
+
+        onAuthStateChanged(auth, (user) => {
+            if (user) {
+                subjectsRef = collection(db, 'projects', uniqueAppId, 'subjects');
+                loadDataFromFirestore();
+            } else {
+                if(unsubscribeSnapshot) unsubscribeSnapshot();
+            }
+        });
+
+        function loadDataFromFirestore() {
+            if (!subjectsRef) return;
+            unsubscribeSnapshot = onSnapshot(subjectsRef, (snapshot) => {
+                const newData = [];
+                snapshot.forEach(doc => { newData.push(doc.data()); });
+                
+                appData = newData.sort((a, b) => a.id.localeCompare(b.id));
+
+                if (appData.length > 0) {
+                    if (!activeSubjectId || !appData.find(s => s.id === activeSubjectId)) {
+                        activeSubjectId = appData[0].id;
+                    }
+                } else {
+                    activeSubjectId = null;
+                }
+                window.forceHideLoading();
+            }, (error) => {
+                console.error("Lỗi tải dữ liệu Cloud:", error);
+                window.forceHideLoading();
+            });
+        }
+
+        initAuth();
+
+        setTimeout(() => {
+            const loading = document.getElementById('loadingOverlay');
+            if(loading && !loading.classList.contains('hidden')) {
+                const saved = localStorage.getItem('ghiaGroupEvalApp_local');
+                if (saved && appData.length === 0) {
+                    try { appData = JSON.parse(saved); if(appData.length > 0) activeSubjectId = appData[0].id; } catch(e){}
+                }
+                window.forceHideLoading();
+            }
+        }, 3000);
+
+        function getActiveSubject() {
+            return appData.find(s => s.id === activeSubjectId);
+        }
+
+        async function syncData(actionType = 'update', subjectIdToDelete = null) {
+            localStorage.setItem('ghiaGroupEvalApp_local', JSON.stringify(appData));
+
+            if (!subjectsRef) return;
+            if (actionType === 'delete' && subjectIdToDelete) {
+                await deleteDoc(doc(subjectsRef, subjectIdToDelete));
+            } else {
+                const subject = getActiveSubject();
+                if (subject) {
+                    await setDoc(doc(subjectsRef, subject.id), subject);
+                }
+            }
+        }
+
+        // --- HÀM TƯƠNG TÁC GIAO DIỆN ---
+        window.addSubject = async function() {
+            const name = prompt("Nhập tên môn học mới:");
+            if (name && name.trim()) {
+                const newId = 'subj_' + Date.now();
+                const newSubj = { id: newId, name: name.trim(), groupScore: 8.5, members: [] };
+                appData.push(newSubj);
+                activeSubjectId = newId; 
+                renderApp(); 
+                await syncData('update');
+            }
+        };
+
+        window.switchSubject = function(id) { activeSubjectId = id; renderApp(); };
+
+        window.deleteSubject = async function() {
+            if (!activeSubjectId) return;
+            if (confirm("Bạn có chắc chắn muốn xóa toàn bộ dữ liệu môn học này? Mọi người đều sẽ mất dữ liệu.")) {
+                const idToDelete = activeSubjectId;
+                appData = appData.filter(s => s.id !== idToDelete);
+                activeSubjectId = appData.length > 0 ? appData[0].id : null;
+                renderApp();
+                await syncData('delete', idToDelete);
+            }
+        };
+
+        window.saveGroupScore = async function() {
+            const subject = getActiveSubject();
+            if (subject) {
+                subject.groupScore = parseFloat(document.getElementById('groupScoreInput').value) || 0;
+                renderCalculation(); 
+                await syncData('update');
+            }
+        };
+
+        const modalMember = document.getElementById('memberModal');
+        const modalMemberContent = document.getElementById('memberModalContent');
+
+        window.openMemberModal = function(editId = null) {
+            const subject = getActiveSubject();
+            if(!subject) return;
+
+            document.getElementById('memberModalTitle').textContent = editId ? "Sửa Thành Viên" : "Thêm Thành Viên";
+            document.getElementById('editMemberId').value = editId || '';
+            
+            if (editId) {
+                const mem = subject.members.find(m => m.id === editId);
+                document.getElementById('mName').value = mem.name;
+                document.getElementById('mMsv').value = mem.msv;
+                document.getElementById('mRole').value = mem.role;
+            } else {
+                document.getElementById('mName').value = '';
+                document.getElementById('mMsv').value = '';
+                document.getElementById('mRole').value = '';
+            }
+
+            modalMember.classList.remove('hidden');
+            setTimeout(() => { modalMember.classList.remove('opacity-0'); modalMemberContent.classList.remove('scale-95'); }, 10);
+        };
+
+        window.closeMemberModal = function() {
+            modalMember.classList.add('opacity-0');
+            modalMemberContent.classList.add('scale-95');
+            setTimeout(() => { modalMember.classList.add('hidden'); }, 300);
+        };
+
+        window.saveMember = async function() {
+            const subject = getActiveSubject();
+            if(!subject) return;
+
+            const editId = document.getElementById('editMemberId').value;
+            const name = document.getElementById('mName').value.trim();
+            const msv = document.getElementById('mMsv').value.trim();
+            const role = document.getElementById('mRole').value.trim();
+
+            if (!name) { alert("Vui lòng nhập tên thành viên!"); return; }
+
+            if (editId) {
+                const mem = subject.members.find(m => m.id === editId);
+                mem.name = name; mem.msv = msv; mem.role = role;
+            } else {
+                let existingMembers = subject.members || [];
+                if (!Array.isArray(existingMembers)) existingMembers = Object.values(existingMembers);
+                
+                subject.members = [...existingMembers, {
+                    id: 'mem_' + Date.now(),
+                    name, msv, role,
+                    scores: { self: { ...defaultScore }, leader: { ...defaultScore } }
+                }];
+            }
+            window.closeMemberModal();
+            renderApp(); 
+            await syncData('update');
+        };
+
+        window.deleteMember = async function(e, memId) {
+            e.stopPropagation(); 
+            if(confirm("Xóa thành viên này khỏi danh sách chung?")) {
+                const subject = getActiveSubject();
+                subject.members = subject.members.filter(m => m.id !== memId);
+                renderApp(); 
+                await syncData('update');
+            }
+        };
+
+        function calculateTotal(scoreObj) {
+            let total = (scoreObj.c1 || 0) + (scoreObj.c2 || 0) + (scoreObj.c3 || 0) + 
+                        (scoreObj.c4 || 0) + (scoreObj.c5 || 0) + (scoreObj.c6 || 0) + (scoreObj.bonus || 0);
+            if(total > 10) total = 10;
+            if(total < 0) total = 0;
+            return total;
+        }
+
+        const scoreModal = document.getElementById('scoreModal');
+        const scoreModalContent = document.getElementById('scoreModalContent');
+
+        window.openScoreModal = function(memberId) {
+            activeMemberIdForScore = memberId;
+            const subject = getActiveSubject();
+            const member = subject.members.find(m => m.id === memberId);
+            
+            document.getElementById('modalMemberName').textContent = member.name;
+            document.getElementById('modalMemberRole').textContent = `MSV: ${member.msv} | ${member.role}`;
+
+            const isSelf = currentSubTab === 'self';
+            const scoreObj = isSelf ? member.scores.self : member.scores.leader;
+
+            ['c1', 'c2', 'c3', 'c4', 'c5', 'c6', 'cBonus'].forEach(id => {
+                document.getElementById(id).value = scoreObj[id] || 0;
+            });
+
+            window.updateModalTotal();
+
+            scoreModal.classList.remove('hidden');
+            setTimeout(() => { scoreModal.classList.remove('opacity-0'); scoreModalContent.classList.remove('scale-95'); }, 10);
+        };
+
+        window.closeScoreModal = function() {
+            scoreModal.classList.add('opacity-0');
+            scoreModalContent.classList.add('scale-95');
+            setTimeout(() => { scoreModal.classList.add('hidden'); activeMemberIdForScore = null; }, 300);
+        };
+
+        window.updateModalTotal = function() {
+            let t = 0;
+            ['c1', 'c2', 'c3', 'c4', 'c5', 'c6', 'cBonus'].forEach(id => { t += parseFloat(document.getElementById(id).value) || 0; });
+            if(t > 10) t = 10;
+            if(t < 0) t = 0;
+            document.getElementById('modalTotalScore').textContent = t.toFixed(2);
+        };
+
+        document.querySelectorAll('.score-input').forEach(input => { input.addEventListener('input', window.updateModalTotal); });
+
+        window.saveScore = async function() {
+            if(!activeMemberIdForScore) return;
+            const subject = getActiveSubject();
+            const member = subject.members.find(m => m.id === activeMemberIdForScore);
+            const isSelf = currentSubTab === 'self';
+            const targetObj = isSelf ? member.scores.self : member.scores.leader;
+
+            targetObj.c1 = Math.min(3, Math.max(0, parseFloat(document.getElementById('c1').value) || 0));
+            targetObj.c2 = Math.min(2, Math.max(0, parseFloat(document.getElementById('c2').value) || 0));
+            targetObj.c3 = Math.min(1.5, Math.max(0, parseFloat(document.getElementById('c3').value) || 0));
+            targetObj.c4 = Math.min(1, Math.max(0, parseFloat(document.getElementById('c4').value) || 0));
+            targetObj.c5 = Math.min(1.5, Math.max(0, parseFloat(document.getElementById('c5').value) || 0));
+            targetObj.c6 = Math.min(1, Math.max(0, parseFloat(document.getElementById('c6').value) || 0));
+            targetObj.bonus = Math.min(1, Math.max(-2, parseFloat(document.getElementById('cBonus').value) || 0));
+
+            window.closeScoreModal();
+            renderApp(); 
+            await syncData('update');
+        };
+
+        window.exportData = function() {
+            if (appData.length === 0) { alert("Chưa có dữ liệu!"); return; }
+            const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(appData));
+            const node = document.createElement('a');
+            node.setAttribute("href", dataStr);
+            node.setAttribute("download", "danh_gia_backup.json");
+            document.body.appendChild(node);
+            node.click(); node.remove();
+        };
+
+        window.switchSubTab = function(tabId) { currentSubTab = tabId; renderApp(); };
+
+        function renderApp() {
+            const tabsEl = document.getElementById('subjectTabs');
+            const noSubjStateEl = document.getElementById('noSubjectState');
+            const mainContentEl = document.getElementById('mainContent');
+
+            tabsEl.innerHTML = '';
+            appData.forEach(subject => {
+                const isActive = subject.id === activeSubjectId;
+                const btnClass = isActive ? 'bg-ghia-rust text-white shadow-md' : 'bg-white border border-ghia-tan text-ghia-ink hover:bg-ghia-bg/10';
+                tabsEl.innerHTML += `<button onclick="switchSubject('${subject.id}')" class="whitespace-nowrap px-5 py-2 rounded-full text-sm font-semibold transition-all ${btnClass}">${subject.name}</button>`;
+            });
+            tabsEl.innerHTML += `<button onclick="addSubject()" class="whitespace-nowrap px-4 py-2 rounded-full border border-dashed border-ghia-rust text-ghia-rust hover:bg-ghia-rust/10 text-sm font-semibold transition-colors flex items-center"><i class="fas fa-plus mr-1"></i> Thêm Môn</button>`;
+
+            if (!activeSubjectId || appData.length === 0) {
+                noSubjStateEl.classList.remove('hidden');
+                mainContentEl.classList.add('hidden');
+                mainContentEl.classList.remove('flex');
+                return;
+            } else {
+                noSubjStateEl.classList.add('hidden');
+                mainContentEl.classList.remove('hidden');
+                mainContentEl.classList.add('flex');
+            }
+
+            const subject = getActiveSubject();
+            if(!subject) return;
+
+            document.getElementById('currentSubjectTitle').textContent = subject.name;
+            document.getElementById('groupScoreInput').value = subject.groupScore;
+
+            // Xóa tab criteria & guide, chỉ còn 3 tab chính
+            ['self', 'leader', 'calc'].forEach(t => {
+                const btn = document.getElementById(`tab-${t}`);
+                if(!btn) return;
+                btn.className = (t === currentSubTab) 
+                    ? "whitespace-nowrap px-6 py-2 rounded-full text-sm font-semibold transition-all bg-ghia-rust text-white shadow-md"
+                    : "whitespace-nowrap px-6 py-2 rounded-full text-sm font-semibold transition-all bg-white border border-ghia-tan text-ghia-ink hover:bg-ghia-bg/10";
+            });
+
+            document.getElementById('view-list').classList.add('hidden');
+            document.getElementById('view-calc').classList.add('hidden');
+
+            if (currentSubTab === 'calc') {
+                document.getElementById('view-calc').classList.remove('hidden');
+                renderCalculation();
+            } else {
+                document.getElementById('view-list').classList.remove('hidden');
+                document.getElementById('view-list-title').textContent = currentSubTab === 'self' ? 'Thành Viên Tự Đánh Giá' : 'Nhóm Trưởng Đánh Giá';
+                renderList(subject);
+            }
+        }
+
+        function renderList(subject) {
+            const container = document.getElementById('members-container');
+            const emptyState = document.getElementById('noMemberState');
+            container.innerHTML = '';
+
+            let membersArray = subject.members || [];
+            if (!Array.isArray(membersArray)) membersArray = Object.values(membersArray);
+
+            if (membersArray.length === 0) {
+                emptyState.classList.remove('hidden');
+                return;
+            } else {
+                emptyState.classList.add('hidden');
+            }
+            
+            const isSelf = currentSubTab === 'self';
+
+            membersArray.forEach(member => {
+                const scoreObj = isSelf ? member.scores.self : member.scores.leader;
+                const total = calculateTotal(scoreObj).toFixed(2);
+                let scoreColor = (total == 10) ? 'text-green-600' : (total < 8 ? 'text-ghia-rust' : 'text-ghia-ink');
+
+                container.innerHTML += `
+                    <div class="bg-white border border-ghia-tan rounded-[1.5rem] p-4 md:p-5 flex items-center justify-between hover:shadow-lg transition-all hover:border-ghia-rust group relative">
+                        <div class="absolute top-3 right-4 flex gap-3 opacity-100 md:opacity-0 group-hover:opacity-100 transition-opacity">
+                            <button onclick="openMemberModal('${member.id}')" class="text-ghia-muted hover:text-blue-600 transition"><i class="fas fa-edit"></i></button>
+                            <button onclick="deleteMember(event, '${member.id}')" class="text-ghia-muted hover:text-ghia-rust transition"><i class="fas fa-trash-alt"></i></button>
+                        </div>
+                        <div class="w-3/4 pr-2 cursor-pointer pt-2" onclick="openScoreModal('${member.id}')">
+                            <h3 class="font-serif font-semibold text-lg text-ghia-ink group-hover:text-ghia-rust transition-colors pr-8">${member.name}</h3>
+                            <p class="text-xs text-ghia-muted font-sans uppercase tracking-wider mt-1 truncate">${member.role || 'Chưa có nhiệm vụ'}</p>
+                        </div>
+                        <div class="flex flex-col items-end cursor-pointer pt-2" onclick="openScoreModal('${member.id}')">
+                            <span class="text-[10px] text-ghia-muted uppercase tracking-widest font-bold mb-1">Tổng</span>
+                            <div class="bg-ghia-cream px-3 py-1 rounded-full border border-ghia-tan">
+                                <span class="font-serif font-bold text-xl ${scoreColor}">${total}</span>
+                            </div>
+                        </div>
+                    </div>`;
+            });
+        }
+
+        function renderCalculation() {
+            const tbody = document.getElementById('calc-table-body');
+            tbody.innerHTML = '';
+            const subject = getActiveSubject();
+            if(!subject) return;
+
+            let membersArray = subject.members || [];
+            if (!Array.isArray(membersArray)) membersArray = Object.values(membersArray);
+
+            let totalLeaderScore = 0;
+            membersArray.forEach(m => totalLeaderScore += calculateTotal(m.scores.leader));
+            const avgLeaderScore = membersArray.length > 0 ? (totalLeaderScore / membersArray.length) : 0;
+
+            const formulaNote = document.getElementById('formula-note');
+            if (formulaNote) {
+                formulaNote.innerHTML = `*Công thức: Điểm Thực Tế = Điểm Nhóm Chung × (Điểm Nhóm Trưởng Chấm / Điểm TB Nhóm). <br> <strong>Điểm TB Nhóm hiện tại: ${avgLeaderScore.toFixed(2)}</strong> (Tối đa 10đ).`;
+            }
+
+            if(membersArray.length === 0) {
+                tbody.innerHTML = `<tr><td colspan="5" class="py-6 text-center text-ghia-muted font-serif italic">Chưa có thành viên nào.</td></tr>`;
+                return;
+            }
+
+            membersArray.forEach(member => {
+                const selfTotal = calculateTotal(member.scores.self);
+                const leaderTotal = calculateTotal(member.scores.leader);
+                let finalScore = avgLeaderScore > 0 ? (subject.groupScore * (leaderTotal / avgLeaderScore)) : 0;
+                if (finalScore > 10) finalScore = 10;
+
+                tbody.innerHTML += `
+                    <tr class="hover:bg-ghia-cream/50 transition-colors">
+                        <td class="py-3 px-4 font-semibold text-ghia-ink">${member.name}</td>
+                        <td class="py-3 px-4 text-center text-ghia-muted text-xs hidden md:table-cell truncate" title="${member.role}">${member.role}</td>
+                        <td class="py-3 px-4 text-center text-ghia-muted font-serif">${selfTotal.toFixed(2)}</td>
+                        <td class="py-3 px-4 text-center text-ghia-rust font-bold font-serif">${leaderTotal.toFixed(2)}</td>
+                        <td class="py-3 px-4 text-center"><span class="inline-block bg-ghia-ink text-white px-3 py-1 rounded-full font-serif font-bold text-lg shadow-sm">${finalScore.toFixed(2)}</span></td>
+                    </tr>`;
+            });
+        }
+    </script>
+</body>
+</html>
